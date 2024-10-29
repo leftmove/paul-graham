@@ -1,8 +1,6 @@
-import axios from 'axios';
-import * as rax from 'retry-axios';
 import * as cheerio from 'cheerio';
 
-import fs from 'fs';
+import retry from 'fetch-retry';
 
 interface Article {
 	title?: string;
@@ -14,11 +12,21 @@ interface Article {
 const BASE_URL = 'https://www.paulgraham.com/';
 const ARTICLES_URL = BASE_URL + 'articles.html';
 
-rax.attach();
+const fetch = retry(global.fetch);
 
-export async function fetchArticleContent(url: string): Promise<Article> {
-	const response = await axios.get(url, { raxConfig: { retry: 3, backoffType: 'exponential' } });
-	const $ = cheerio.load(response.data);
+export async function fetchArticleContent(url: string, index: number = 0): Promise<Article> {
+	const response = await fetch(url, {
+		retries: 3,
+		retryDelay: function (attempt, error, response) {
+			return Math.pow(2, attempt) * 1000; // 1000, 2000, 4000
+		},
+		cf: {
+			cacheEverything: true,
+			cacheTtl: 60 * 60 * 24 * 7 + index * 60 * 60, // 1 week + index amount of hours
+		},
+	});
+	const data = await response.text();
+	const $ = cheerio.load(data);
 
 	// Extract the main content. Most PG essays are inside <font> tags.
 	const content = $('font').html() || '';
@@ -28,8 +36,9 @@ export async function fetchArticleContent(url: string): Promise<Article> {
 }
 
 export async function fetchArticles(): Promise<Article[]> {
-	const response = await axios.get(ARTICLES_URL);
-	const $ = cheerio.load(response.data);
+	const response = await fetch(ARTICLES_URL);
+	const data = await response.text();
+	const $ = cheerio.load(data);
 
 	const articles: Article[] = [];
 	// TODO_HACK: Num of links to skip. The first 3 links are not the most recent essays.
@@ -93,7 +102,7 @@ export function generateRssFeed(articles: Article[]): string {
             ${
 							article?.content
 								? `<description>
-                <![CDATA[${article.content}]]>
+                <![CDATA[${JSON.stringify(article.content)}]]>
             </description>`
 								: ''
 						}
