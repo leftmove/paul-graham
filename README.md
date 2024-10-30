@@ -2,7 +2,7 @@
 
 An RSS feed for Paul Graham's essays.
 
-This project was created because the [RSS feed created by Aaron Swartz](https://paulgraham.com/rss.html) on Paul Graham's website has since stopped working. And because I wanted the full text along with the publication date for my RSS reader.
+This project was created because [Aaron Swart's RSS feed](https://paulgraham.com/rss.html) on Paul Graham's website stopped working. And because I wanted the full text along with the publication date for my RSS reader.
 
 Inspired by Daniel Olshansky's [feed](https://github.com/Olshansk/pgessays-rss). (The starting point for this project was an AI translation of his Python code.)
 
@@ -10,8 +10,8 @@ The hosted version of this feed is available at **[anonyonoor.com/feeds/paul-gra
 
 # Features
 
-- Checks for updates every minute by caching results every minute.
-- Includes the full text of the essays.
+- Checks for updates every minute.
+- Includes the full text of each essay.
 - Includes the publication date of each essay.
 - Includes the URL and title of each essay.
 - Self-host possible.

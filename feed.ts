@@ -117,10 +117,6 @@ export async function fetchArticles(
     const title = $(element).text().trim(); // Extracts only the text, skips inner HTML tags
     const url = href && href.endsWith(".html") && title ? BASE_URL + href : "";
 
-    if (url === "https://paulgraham.com/rss.html") {
-      return;
-    }
-
     articles.push({
       title,
       url,
