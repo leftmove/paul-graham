@@ -16,6 +16,24 @@ const ARTICLES_URL = BASE_URL + "articles.html";
 
 const fetch = retry(global.fetch);
 
+function extractMonthAndYear(html: string) {
+  // Find the first instance of a 4-digit year
+  const yearRegex = /\b\d{4}\b/;
+  const yearMatch = html.match(yearRegex);
+
+  if (yearMatch === null || yearMatch.index === undefined) return null;
+
+  // Extract the surrounding text to find the month
+  const yearIndex = yearMatch.index;
+  const surroundingText = html.substring(yearIndex - 20, yearIndex + 5);
+
+  // Extract the month and year
+  const monthYearRegex =
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b/;
+  const monthYearMatch = surroundingText.match(monthYearRegex);
+  return monthYearMatch && monthYearMatch[0];
+}
+
 export async function fetchArticleContent(
   url: string,
   index: number = 0,
@@ -45,28 +63,22 @@ export async function fetchArticleContent(
   const data = await response.text();
   const $ = cheerio.load(data);
 
-  const regex =
-    /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b/;
-
-  let content;
-  let date;
-  let valid = false;
-
+  const elements: string[] = [];
   $("font").each((i, el) => {
-    if (valid) return;
     const element = cheerio.load(el.children);
-
-    content = element.html() || "";
-    date = content.split("<br>")[0].replace("\n", "").trim();
-
-    // If the date is not in the expected format, try the next <font> tag.
-    if (regex.test(date) === true) {
-      valid = true;
+    const html = element.html() || "";
+    if (element.length >= 1 || (html.startsWith("[") && html.endsWith("]"))) {
+      elements.push(html);
     }
   });
 
-  if (valid === false) {
-    console.warn("No valid content found in the article.", url);
+  const joined = elements.join("");
+  const content = joined.replace("\n", " ").trim();
+  const month = extractMonthAndYear(joined) || "NA";
+  const date = month === "NA" ? "NA" : new Date(month).toUTCString();
+
+  if (date === "NA") {
+    console.log("Failed to extract date for", url);
   }
 
   return { content, date };
@@ -76,6 +88,14 @@ export async function fetchArticles(
   environment: Environment = "none"
 ): Promise<Article[]> {
   const response = await fetch(ARTICLES_URL, {
+    ...(environment === "worker"
+      ? {
+          cf: {
+            cacheEverything: true,
+            cacheTtl: 60, // 1 minute
+          },
+        }
+      : null),
     ...(environment === "next"
       ? ({
           next: {
@@ -96,6 +116,10 @@ export async function fetchArticles(
     const href = $(element).attr("href");
     const title = $(element).text().trim(); // Extracts only the text, skips inner HTML tags
     const url = href && href.endsWith(".html") && title ? BASE_URL + href : "";
+
+    if (url === "https://paulgraham.com/rss.html") {
+      return;
+    }
 
     articles.push({
       title,
@@ -140,7 +164,7 @@ export function prettifyXML(xml: string, tab = "\t"): string {
 }
 
 export function generateRssFeed(articles: Article[]): string {
-  const rss = prettifyXML(`<?xml version="1.0"?>
+  const rss = `<?xml version="1.0"?>
     <rss version="2.0">
     <channel>
       <title>Paul Graham: Essays</title>
@@ -154,6 +178,7 @@ export function generateRssFeed(articles: Article[]): string {
         <item>
             <title>${article.title}</title>
             <link>${article.url}</link>
+            <pubDate>${article.date}</pubDate>
             ${
               article?.content
                 ? `<description>
@@ -167,6 +192,6 @@ export function generateRssFeed(articles: Article[]): string {
         `
         )
         .join("")}
-    `);
+    `;
   return rss;
 }
