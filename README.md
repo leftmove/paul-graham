@@ -6,6 +6,8 @@ This project was created because [Aaron Swart's RSS feed](https://paulgraham.com
 
 Inspired by Daniel Olshansky's [feed](https://github.com/Olshansk/pgessays-rss). (The starting point for this project was an AI translation of his Python code.)
 
+# Link (Hosted)
+
 The hosted version of this feed is available at **[anonyonoor.com/feeds/paul-graham](https://www.anonyonoor.com/feeds/paul-graham)**.
 
 # Features
