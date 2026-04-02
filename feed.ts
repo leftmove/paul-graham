@@ -31,6 +31,7 @@ function extractMonthAndYear(html: string) {
   const monthYearRegex =
     /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s\d{4}\b/;
   const monthYearMatch = surroundingText.match(monthYearRegex);
+
   return monthYearMatch && monthYearMatch[0];
 }
 
@@ -73,9 +74,13 @@ export async function fetchArticleContent(
   });
 
   const joined = elements.join("");
-  const content = joined.replace("\n", " ").trim();
+  const content = joined
+    .replace("\n", " ")
+    .trim()
+    .replace("\n", " ")
+    .replace("  ", " ");
   const month = extractMonthAndYear(joined) || "NA";
-  const date = month === "NA" ? "NA" : new Date(month).toUTCString();
+  const date = month === "NA" ? "NA" : new Date("1 " + month).toUTCString();
 
   if (date === "NA") {
     console.log("Failed to extract date for", url);
@@ -108,8 +113,6 @@ export async function fetchArticles(
   const $ = cheerio.load(data);
 
   const articles: Article[] = [];
-  // TODO_HACK: Num of links to skip. The first 3 links are not the most recent essays.
-  // Rather, Paul shares the best essays to start "if you're not sure which to read [first]
 
   // Find all 'a' tags with hrefs, skip those that have no actual text
   $("a[href]").each((_, element) => {
@@ -117,13 +120,15 @@ export async function fetchArticles(
     const title = $(element).text().trim(); // Extracts only the text, skips inner HTML tags
     const url = href && href.endsWith(".html") && title ? BASE_URL + href : "";
 
-    articles.push({
-      title,
-      url,
-    });
+    if (title && url) {
+      articles.push({
+        title,
+        url,
+      });
+    }
   });
 
-  return articles;
+  return articles.slice(3);
 }
 
 export async function fetchContent(
@@ -178,9 +183,7 @@ export function generateRssFeed(articles: Article[]): string {
             ${
               article?.content
                 ? `<description>
-                <![CDATA[${article.content
-                  .replace("\n", " ")
-                  .replace("  ", " ")}]]>
+                <![CDATA[${article.content}]]>
             </description>`
                 : ""
             }
